@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { HelpTooltip } from '../components/HelpTooltip';
-import { Plus, Upload, UserX, Search, Calendar } from 'lucide-react';
+import { Plus, Upload, UserX, Search } from 'lucide-react';
 
 interface Member {
   id: string;
   full_name: string;
+  team: string;
   join_date: string;
   leave_date: string | null;
   notes: string;
@@ -22,6 +23,7 @@ export function Members() {
 
   const [formData, setFormData] = useState({
     full_name: '',
+    team: '',
     join_date: new Date().toISOString().split('T')[0],
     notes: '',
   });
@@ -78,7 +80,7 @@ export function Members() {
       if (error) throw error;
 
       setShowAddModal(false);
-      setFormData({ full_name: '', join_date: new Date().toISOString().split('T')[0], notes: '' });
+      setFormData({ full_name: '', team: '', join_date: new Date().toISOString().split('T')[0], notes: '' });
       loadMembers();
     } catch (error) {
       console.error('Error adding member:', error);
@@ -112,7 +114,13 @@ export function Members() {
       try {
         const json = JSON.parse(event.target?.result as string);
         const membersArray = Array.isArray(json) ? json : [json];
-        setImportData(membersArray);
+        const mappedMembers = membersArray.map((m: any) => ({
+          full_name: m.full_name || m['İsim Soyisim'],
+          team: m.team || m['Ekip'] || '',
+          join_date: m.join_date || new Date().toISOString().split('T')[0],
+          notes: m.notes || ''
+        }));
+        setImportData(mappedMembers);
         setImportPreview(true);
       } catch (error) {
         alert('Invalid JSON file');
@@ -136,6 +144,7 @@ export function Members() {
       const { error } = await supabase.from('members').insert(
         newMembers.map(m => ({
           full_name: m.full_name,
+          team: m.team,
           join_date: m.join_date || new Date().toISOString().split('T')[0],
           notes: m.notes || '',
         }))
@@ -217,6 +226,10 @@ export function Members() {
                   <HelpTooltip text="Member's full name" />
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Team
+                  <HelpTooltip text="Member's team" />
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Join Date
                   <HelpTooltip text="Date the member joined the team" />
                 </th>
@@ -244,6 +257,9 @@ export function Members() {
                   <tr key={member.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">{member.full_name}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-500">{member.team || '-'}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-500">
@@ -301,6 +317,18 @@ export function Members() {
                   required
                   value={formData.full_name}
                   onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                  Team
+                  <HelpTooltip text="Member's team" />
+                </label>
+                <input
+                  type="text"
+                  value={formData.team}
+                  onChange={(e) => setFormData({ ...formData, team: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                 />
               </div>
@@ -375,7 +403,7 @@ export function Members() {
                 <div className="bg-gray-50 rounded-lg p-4 text-sm">
                   <p className="font-medium text-gray-900 mb-2">Expected JSON format:</p>
                   <pre className="text-xs text-gray-600 overflow-x-auto">
-{`[
+                    {`[
   {
     "full_name": "John Doe",
     "join_date": "2024-01-15",
@@ -405,6 +433,7 @@ export function Members() {
                     <thead className="bg-gray-50 sticky top-0">
                       <tr>
                         <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Name</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Team</th>
                         <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Join Date</th>
                         <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Status</th>
                       </tr>
@@ -417,6 +446,7 @@ export function Members() {
                         return (
                           <tr key={idx} className={isDuplicate ? 'bg-gray-50' : ''}>
                             <td className="px-4 py-2 text-sm">{m.full_name}</td>
+                            <td className="px-4 py-2 text-sm">{m.team}</td>
                             <td className="px-4 py-2 text-sm">{m.join_date || 'Today'}</td>
                             <td className="px-4 py-2 text-sm">
                               {isDuplicate ? (

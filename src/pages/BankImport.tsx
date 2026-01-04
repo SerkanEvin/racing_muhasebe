@@ -1,12 +1,8 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { HelpTooltip } from '../components/HelpTooltip';
-import { Upload, FileSpreadsheet, CheckCircle, AlertCircle } from 'lucide-react';
+import { Upload, CheckCircle } from 'lucide-react';
 import * as XLSX from 'xlsx';
-
-interface ImportStep {
-  step: 1 | 2 | 3 | 4;
-}
 
 interface ParsedRow {
   [key: string]: any;
@@ -65,17 +61,51 @@ export function BankImport() {
       const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
 
       if (jsonData.length > 0) {
-        const headers = jsonData[0] as string[];
-        const rows = jsonData.slice(1).map((row: any) => {
+        let headers: string[] = [];
+        let rows: any[] = [];
+        let headerRowIndex = 0;
+
+        // Try to find known header row
+        for (let i = 0; i < Math.min(jsonData.length, 25); i++) {
+          const row = jsonData[i] as any[];
+          if (row && (row.includes('Tarih/Saat') || row.includes('Date'))) {
+            headerRowIndex = i;
+            headers = row.map((h: any) => String(h || '')); // Ensure strings
+            break;
+          }
+        }
+
+        if (headers.length === 0) {
+          headers = (jsonData[0] as any[]).map(h => String(h));
+          headerRowIndex = 0;
+        }
+
+        const dataRows = jsonData.slice(headerRowIndex + 1);
+
+        rows = dataRows.map((row: any) => {
           const obj: ParsedRow = {};
           headers.forEach((header, index) => {
-            obj[header] = row[index];
+            if (header) {
+              obj[header] = row[index];
+            }
           });
           return obj;
-        });
+        }).filter(r => Object.keys(r).length > 0);
 
-        setColumnNames(headers);
+        setColumnNames(headers.filter(h => h && h.trim() !== ''));
         setParsedData(rows);
+
+        // Auto-mapping
+        const newMapping = { ...columnMapping };
+        if (headers.includes('Tarih/Saat')) newMapping.txn_date = 'Tarih/Saat';
+        if (headers.includes('Açıklama')) newMapping.description = 'Açıklama';
+        if (headers.includes('İşlem Tutarı*')) newMapping.amount = 'İşlem Tutarı*';
+        if (headers.includes('Referans')) newMapping.reference = 'Referans';
+
+        if (newMapping.txn_date) {
+          setColumnMapping(newMapping);
+        }
+
         setCurrentStep(2);
       }
     } catch (error) {
@@ -99,7 +129,22 @@ export function BankImport() {
 
     try {
       const transactionsToImport = parsedData.map((row) => {
-        const txnDate = row[columnMapping.txn_date];
+        let txnDate = row[columnMapping.txn_date];
+
+        // Parse DD/MM/YYYY format
+        if (typeof txnDate === 'string' && txnDate.includes('/')) {
+          // Take the date part before any time component (e.g. "04/01/2026-15:29:07" -> "04/01/2026")
+          const datePart = txnDate.split(/[- ]/)[0];
+          const parts = datePart.split('/');
+          if (parts.length === 3) {
+            // standard DD/MM/YYYY check
+            const [day, month, year] = parts;
+            if (day.length <= 2 && month.length <= 2 && year.length === 4) {
+              txnDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+            }
+          }
+        }
+
         const description = row[columnMapping.description] || '';
         const amount = parseFloat(String(row[columnMapping.amount] || 0));
         const direction = columnMapping.direction ? String(row[columnMapping.direction] || 'in') : (amount >= 0 ? 'in' : 'out');
@@ -191,9 +236,8 @@ export function BankImport() {
           {[1, 2, 3, 4].map((step) => (
             <div key={step} className="flex items-center">
               <div
-                className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                  currentStep >= step ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
-                }`}
+                className={`w-10 h-10 rounded-full flex items-center justify-center ${currentStep >= step ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
+                  }`}
               >
                 {currentStep > step ? <CheckCircle className="w-6 h-6" /> : step}
               </div>
@@ -394,11 +438,10 @@ export function BankImport() {
                         <td className="px-4 py-2">{String(row[columnMapping.description] || '')}</td>
                         <td className="px-4 py-2 font-semibold">{Math.abs(amount).toFixed(2)} TL</td>
                         <td className="px-4 py-2">
-                          <span className={`px-2 py-1 text-xs rounded-full ${
-                            direction.toLowerCase().includes('out') || amount < 0
-                              ? 'bg-red-100 text-red-800'
-                              : 'bg-green-100 text-green-800'
-                          }`}>
+                          <span className={`px-2 py-1 text-xs rounded-full ${direction.toLowerCase().includes('out') || amount < 0
+                            ? 'bg-red-100 text-red-800'
+                            : 'bg-green-100 text-green-800'
+                            }`}>
                             {direction.toLowerCase().includes('out') || amount < 0 ? 'Out' : 'In'}
                           </span>
                         </td>
@@ -470,11 +513,10 @@ export function BankImport() {
                       {parseFloat(String(txn.amount)).toFixed(2)} TL
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 text-xs rounded-full ${
-                        txn.direction === 'out'
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-green-100 text-green-800'
-                      }`}>
+                      <span className={`px-2 py-1 text-xs rounded-full ${txn.direction === 'out'
+                        ? 'bg-red-100 text-red-800'
+                        : 'bg-green-100 text-green-800'
+                        }`}>
                         {txn.direction === 'out' ? 'Out' : 'In'}
                       </span>
                     </td>
