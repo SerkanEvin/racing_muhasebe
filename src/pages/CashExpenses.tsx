@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { HelpTooltip } from '../components/HelpTooltip';
-import { Plus, Calendar, Search } from 'lucide-react';
+import { Plus, Search } from 'lucide-react';
 
 interface CashExpense {
   id: string;

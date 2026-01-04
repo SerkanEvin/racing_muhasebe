@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { HelpTooltip } from '../components/HelpTooltip';
-import { Plus, DollarSign, CheckCircle, XCircle, Search } from 'lucide-react';
+import { Plus, CheckCircle, XCircle } from 'lucide-react';
 
 interface Reimbursement {
   id: string;

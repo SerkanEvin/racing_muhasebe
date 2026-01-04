@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { HelpTooltip } from '../components/HelpTooltip';
-import { Plus, Package, ShoppingCart, Edit, Trash2 } from 'lucide-react';
+import { Plus, Package, ShoppingCart, Trash2 } from 'lucide-react';
 
 interface Product {
   id: string;
@@ -271,22 +271,20 @@ export function MerchSales() {
           <nav className="flex -mb-px">
             <button
               onClick={() => setActiveTab('products')}
-              className={`px-6 py-3 text-sm font-medium ${
-                activeTab === 'products'
+              className={`px-6 py-3 text-sm font-medium ${activeTab === 'products'
                   ? 'border-b-2 border-blue-600 text-blue-600'
                   : 'text-gray-500 hover:text-gray-700'
-              }`}
+                }`}
             >
               <Package className="w-4 h-4 inline mr-2" />
               Products & Inventory
             </button>
             <button
               onClick={() => setActiveTab('sales')}
-              className={`px-6 py-3 text-sm font-medium ${
-                activeTab === 'sales'
+              className={`px-6 py-3 text-sm font-medium ${activeTab === 'sales'
                   ? 'border-b-2 border-blue-600 text-blue-600'
                   : 'text-gray-500 hover:text-gray-700'
-              }`}
+                }`}
             >
               <ShoppingCart className="w-4 h-4 inline mr-2" />
               Sales History
